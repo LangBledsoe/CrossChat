@@ -1,0 +1,119 @@
+name: Google Cloud Deployment
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      credentials: ${{ steps.auth.outputs.credentials }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - id: auth
+        name: Authenticate with Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: crosschat-453404
+
+  deploy-cloud-run:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: crosschat-453404
+
+      - name: Build Docker image
+        run: docker build -t gcr.io/crosschat-453404/webhook-app .
+
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker
+
+      - name: Push Docker image to GCR
+        run: docker push gcr.io/crosschat-453404/webhook-app
+
+      - name: Deploy to Cloud Run
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          image: gcr.io/crosschat-453404/webhook-app
+          service: webhook-app
+          region: us-central1
+          flags: >
+            --allow-unauthenticated
+            --platform managed
+            --set-secrets /etc/secrets/mysecrets.json=projects/615830540257/secrets/mysecrets-json:latest
+
+  deploy-refresh-function:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: crosschat-453404
+
+      - name: Deploy refresh-instagram-token (Python)
+        run: |
+          cd key_refresh
+          gcloud functions deploy refresh-instagram-token \
+            --runtime python312 \
+            --trigger-http \
+            --entry-point refresh_instagram_token \
+            --region us-central1 \
+            --set-env-vars GCP_PROJECT=crosschat-453404 \
+            --service-account 615830540257-compute@developer.gserviceaccount.com
+
+  deploy-discord-function:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: crosschat-453404
+
+      - name: Deploy discord-handler (Go)
+        run: |
+          cd discord_handler_go
+          gcloud functions deploy discord-handler \
+            --runtime go122 \
+            --trigger-http \
+            --allow-unauthenticated \
+            --entry-point=DiscordHandler \
+            --region=us-central1 \
+            --set-secrets /etc/secrets/mysecrets.json=projects/615830540257/secrets/mysecrets-json:latest

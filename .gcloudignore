@@ -1,0 +1,26 @@
+# .gcloudignore file for CrossChat project
+.git
+.github
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.pylintrc
+.flake8
+*.log
+*.tmp
+.DS_Store
+discord_handler_go
+key_refresh
+mysecrets.json

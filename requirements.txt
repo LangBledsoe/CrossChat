@@ -1,0 +1,5 @@
+Flask
+discord.py
+gunicorn
+grequests
+pynacl
