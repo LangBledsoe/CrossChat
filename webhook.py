@@ -182,19 +182,17 @@ ZERO_WIDTH_MARKER = '\u200b\u200b\u200b'  # 3x zero-width space
 def parse_mentions(message_text):
     """
     Parse message text for @mentions and replace them with Discord mention format <@USER_ID>
-    
     Args:
         message_text (str): The message text to parse
-        
     Returns:
         str: The message text with @mentions replaced with Discord mention format
     """
     if not message_text:
         return message_text
-        
+
     # Regular expression to find @username mentions
     mention_pattern = r'@(\w+)'
-    
+
     def replace_mention(match):
         username = match.group(1)
         # Check if username is in the DISCORD_USER_IDS dictionary
@@ -203,7 +201,7 @@ def parse_mentions(message_text):
             return f"<@{DISCORD_USER_IDS[username]}>"
         # If not found, return the original @username
         return match.group(0)
-    
+
     # Replace all @mentions in the message
     return re.sub(mention_pattern, replace_mention, message_text)
 
