@@ -2,6 +2,7 @@ import os
 import discord
 import threading
 import time
+import re
 from flask import Flask, request, jsonify
 import grequests
 import logging
@@ -176,6 +177,34 @@ def encode_invisible(text):
 
 # A marker to find the encoded sender_id easily
 ZERO_WIDTH_MARKER = '\u200b\u200b\u200b'  # 3x zero-width space
+
+
+def parse_mentions(message_text):
+    """
+    Parse message text for @mentions and replace them with Discord mention format <@USER_ID>
+    Args:
+        message_text (str): The message text to parse
+    Returns:
+        str: The message text with @mentions replaced with Discord mention format
+    """
+    if not message_text:
+        return message_text
+
+    # Regular expression to find @username mentions
+    mention_pattern = r'@(\w+)'
+
+    def replace_mention(match):
+        username = match.group(1)
+        # Create a case-insensitive lookup for usernames
+        for discord_username, user_id in DISCORD_USER_IDS.items():
+            if username.lower() == discord_username.lower():
+                # Replace with Discord mention format <@USER_ID>
+                return f"<@{user_id}>"
+        # If not found, return the original @username
+        return match.group(0)
+
+    # Replace all @mentions in the message
+    return re.sub(mention_pattern, replace_mention, message_text)
 
 
 @app.route('/webhook', methods=['POST'])
@@ -459,7 +488,9 @@ async def send_reel_with_context(target, username, message_text, reel_url, conte
             else:
                 message_parts.append(f"**From**: {username}")
         if message_text:
-            message_parts.append(f"**Message**: {message_text}")
+            # Parse message for @mentions
+            parsed_message = parse_mentions(message_text)
+            message_parts.append(f"**Message**: {parsed_message}")
 
     # --- SERVER, REEL ONLY ---
     elif context_type == "server_no_message":
@@ -477,7 +508,9 @@ async def send_reel_with_context(target, username, message_text, reel_url, conte
             else:
                 message_parts.append(f"**From**: {username}")
         if message_text:
-            message_parts.append(f"**Message**: {message_text}")
+            # Parse message for @mentions
+            parsed_message = parse_mentions(message_text)
+            message_parts.append(f"**Message**: {parsed_message}")
 
     # --- SERVER, TEXT ONLY ---
     elif context_type == "server_text_only":
@@ -487,7 +520,9 @@ async def send_reel_with_context(target, username, message_text, reel_url, conte
             else:
                 message_parts.append(f"**From**: {username}")
         if message_text:
-            message_parts.append(f"**Message**: {message_text}")
+            # Parse message for @mentions
+            parsed_message = parse_mentions(message_text)
+            message_parts.append(f"**Message**: {parsed_message}")
 
     # Prefix every message with '> ' to make it a quote in Discord
     quoted_message = '> ' + '\n> '.join(message_parts) if message_parts else None
