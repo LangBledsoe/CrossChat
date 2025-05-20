@@ -195,10 +195,11 @@ def parse_mentions(message_text):
 
     def replace_mention(match):
         username = match.group(1)
-        # Check if username is in the DISCORD_USER_IDS dictionary
-        if username in DISCORD_USER_IDS:
-            # Replace with Discord mention format <@USER_ID>
-            return f"<@{DISCORD_USER_IDS[username]}>"
+        # Create a case-insensitive lookup for usernames
+        for discord_username, user_id in DISCORD_USER_IDS.items():
+            if username.lower() == discord_username.lower():
+                # Replace with Discord mention format <@USER_ID>
+                return f"<@{user_id}>"
         # If not found, return the original @username
         return match.group(0)
 
